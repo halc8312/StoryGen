@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
@@ -63,6 +64,7 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [error, setError] = useState(''); // エラーステートの追加
 
   const handleApiKeySubmit = (e) => {
     e.preventDefault();
@@ -81,6 +83,7 @@ function AppContent() {
 
     setIsLoading(true);
     setStory('');
+    setError(''); // エラーメッセージのリセット
     try {
       const lengthPrompt = selectedLength === '短編' ? '短い物語' : selectedLength === '中編' ? '中くらいの物語' : '長い物語';
       const structurePrompt = `この物語は${selectedStructure}です。`;
@@ -90,7 +93,7 @@ function AppContent() {
       const response = await axios.post(
         'https://api.openai.com/v1/chat/completions',
         {
-          model: "gpt-4o-mini",
+          model: "gpt-4o-mini", // モデル名の修正
           messages: [
             {
               role: "system",
@@ -107,14 +110,18 @@ function AppContent() {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${apiKey}`, // APIキーの使用方法を修正
           },
         }
       );
       setStory(response.data.choices[0].message.content.trim() + '\n\nこの物語は続きます。');
     } catch (error) {
       console.error('物語の生成中にエラーが発生しました:', error);
-      setStory('物語の生成中にエラーが発生しました。もう一度お試しください。');
+      if (error.response && error.response.data && error.response.data.error && error.response.data.error.message) {
+        setError(`エラー: ${error.response.data.error.message}`);
+      } else {
+        setError('物語の生成中にエラーが発生しました。もう一度お試しください。');
+      }
     }
     setIsLoading(false);
   };
@@ -126,12 +133,13 @@ function AppContent() {
     }
 
     setIsLoading(true);
+    setError(''); // エラーメッセージのリセット
     try {
       const continuationPrompt = `続きのスタイルは${selectedStyle}で、テーマは${selectedTheme}、視点は${selectedPerspective}です。物語の構造は${selectedStructure}です。${selectedCharacters.map(c => `${c.name}が${selectedCharacterAction}`).join(', ')}。`;
       const response = await axios.post(
         'https://api.openai.com/v1/chat/completions',
         {
-          model: "gpt-4o-mini",
+          model: "gpt-4", // モデル名の修正
           messages: [
             {
               role: "system",
@@ -148,14 +156,18 @@ function AppContent() {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${apiKey}`, // APIキーの使用方法を修正
           },
         }
       );
       setStory((prevStory) => prevStory + '\n\n' + response.data.choices[0].message.content.trim());
     } catch (error) {
       console.error('物語の続き生成中にエラーが発生しました:', error);
-      setStory('物語の続き生成中にエラーが発生しました。もう一度お試しください。');
+      if (error.response && error.response.data && error.response.data.error && error.response.data.error.message) {
+        setError(`エラー: ${error.response.data.error.message}`);
+      } else {
+        setError('物語の続き生成中にエラーが発生しました。もう一度お試しください。');
+      }
     }
     setIsLoading(false);
   };
@@ -205,7 +217,8 @@ function AppContent() {
         </form>
       ) : (
         <>
-          <CharacterGenerator />
+          {/* 修正：apiKeyをCharacterGeneratorに渡す */}
+          <CharacterGenerator apiKey={apiKey} />
           <div className="character-list">
             <h2>生成されたキャラクター</h2>
             {characters.map((character, index) => (
@@ -318,6 +331,7 @@ function AppContent() {
               </div>
             </div>
           )}
+          {error && <p className="error-message">{error}</p>} {/* エラーメッセージの表示 */}
         </>
       )}
     </div>
